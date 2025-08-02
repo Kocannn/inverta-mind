@@ -1,0 +1,29 @@
+FROM golang:1.25rc2-bookworm
+
+RUN apt-get update && apt-get install -y curl
+
+WORKDIR /app
+
+# Salin dulu file dependency
+COPY go.mod ./
+COPY go.sum ./
+
+# Unduh module (agar cache-nya tersimpan)
+RUN go mod download
+
+
+
+# Salin semua source code lainnya
+COPY . .
+
+COPY .env .env
+
+RUN go install github.com/air-verse/air@latest
+
+# Perbaiki dependency (jika ada perubahan import, dll)
+RUN go mod tidy
+
+
+EXPOSE 8000
+
+CMD ["air", "http"]

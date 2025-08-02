@@ -1,0 +1,58 @@
+services:
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../Dockerfile.backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - ollama
+      - postgres
+    env_file:
+      - ./backend/.env  
+
+
+  frontend: 
+    build:
+      context: ./frontend
+      dockerfile: ../Dockerfile.frontend
+    ports: 
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules 
+    dns:
+      - 8.8.8.8
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    volumes:
+      - ollama-data:/root/.ollama
+    ports:
+      - "11434:11434"
+    tty: true
+    pull_policy: always
+    entrypoint: sh -c "ollama serve & sleep 5 && ollama run llama3"
+    command: serve
+
+volumes:
+  ollama-data:
+  pgdata:
