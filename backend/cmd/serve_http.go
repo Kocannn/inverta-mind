@@ -12,12 +12,12 @@ import (
 
 	"go.opentelemetry.io/otel"
 
-	"github.com/hammer-code/lms-be/app"
-	"github.com/hammer-code/lms-be/config"
+	"github.com/Kocannn/self-dunking-ai/app"
+	"github.com/Kocannn/self-dunking-ai/config"
+	"github.com/Kocannn/self-dunking-ai/domain"
+	"github.com/Kocannn/self-dunking-ai/utils"
 	_ "github.com/hammer-code/lms-be/docs"
-	"github.com/hammer-code/lms-be/domain"
 	"github.com/hammer-code/lms-be/pkg/ngelog"
-	"github.com/hammer-code/lms-be/utils"
 
 	// _ "swagger-mux/docs"
 	"github.com/rs/cors"
@@ -117,6 +117,10 @@ func registerHandler(app app.App) *mux.Router {
 	router := mux.NewRouter()
 	router.Use(app.Middleware.LogMiddleware)
 	router.HandleFunc("/health", health)
+
+	v1 := router.PathPrefix("/api/v1").Subrouter()
+
+	v1.HandleFunc("/submit-idea", app.IdeaHandler.SubmitIdea).Methods(http.MethodPost)
 
 	return router
 }
