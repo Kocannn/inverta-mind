@@ -21,7 +21,7 @@ type IdeaHandler interface {
 }
 
 type IdeaUsecase interface {
-	SubmitIdea(ctx context.Context, idea string) error
+	SubmitIdea(ctx context.Context, idea string) ([]*Message, error)
 }
 
 type IdeaRepository interface {
