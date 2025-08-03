@@ -1,8 +1,8 @@
-# Self-Debunking AI
+# InvertaMind
 
 ## About
 
-Self-Debunking AI is an application designed to critically analyze ideas you submit. Unlike typical feedback systems, this AI doesn't just offer encouragement - it provides logical, constructive criticism to help refine your concepts before development.
+InvertaMind is an application designed to critically analyze ideas you submit. Unlike typical feedback systems, this AI doesn't just offer encouragement - it provides logical, constructive criticism to help refine your concepts before development.
 
 ## Purpose
 
