@@ -19,6 +19,8 @@ type (
 		APP_PORT        string
 		DB_POSTGRES_DSN string
 		JWT_SECRET_KEY  string
+		OLLAMA_HOST     string
+		OLLAMA_MODEL    string
 
 		SMTP_HOST     string
 		SMTP_PORT     string
@@ -77,6 +79,8 @@ func GetConfig() Config {
 			SMTP_PORT:            viper.GetString("SMTP_PORT"),
 			SMTP_EMAIL:           viper.GetString("SMTP_EMAIL"),
 			SMTP_PASSWORD:        viper.GetString("SMTP_PASSWORD"),
+			OLLAMA_HOST:          viper.GetString("OLLAMA_HOST"),
+			OLLAMA_MODEL:         viper.GetString("OLLAMA_MODEL"),
 			CORS_ALLOWED_ORIGINS: origins,
 			CORS_ALLOWED_METHODS: methods,
 			CORS_ALLOWED_HEADERS: headers,
