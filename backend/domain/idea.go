@@ -9,6 +9,7 @@ type Idea struct {
 	Id               string `json:"id"`
 	UserId           string `json:"user_id"`
 	Text             string `json:"text"`
+	Critique         string `json:"critique"`          // Add this field for the critique
 	Feedback         string `json:"feedback"`          // feedback dari reviewer
 	ScoreOriginaly   int    `json:"score_originaly"`   // skor orisinal
 	ScoreScalability int    `json:"score_scalability"` // skor skalabilitas
@@ -18,10 +19,14 @@ type Idea struct {
 
 type IdeaHandler interface {
 	SubmitIdea(w http.ResponseWriter, r *http.Request)
+	DefendIdea(w http.ResponseWriter, r *http.Request)
+	ImproveIdea(w http.ResponseWriter, r *http.Request)
 }
 
 type IdeaUsecase interface {
 	SubmitIdea(ctx context.Context, idea string) ([]*Message, error)
+	DefendIdea(ctx context.Context, critique string) ([]*Message, error)
+	ImproveIdea(ctx context.Context, critique string) ([]*Message, error)
 }
 
 type IdeaRepository interface {

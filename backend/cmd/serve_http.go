@@ -121,6 +121,8 @@ func registerHandler(app app.App) *mux.Router {
 	v1 := router.PathPrefix("/api/v1").Subrouter()
 
 	v1.HandleFunc("/submit-idea", app.IdeaHandler.SubmitIdea).Methods(http.MethodPost)
+	v1.HandleFunc("/defend-idea", app.IdeaHandler.DefendIdea).Methods(http.MethodPost)
+	v1.HandleFunc("/improve-idea", app.IdeaHandler.ImproveIdea).Methods(http.MethodPost)
 
 	return router
 }
