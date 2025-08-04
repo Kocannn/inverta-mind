@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/Kocannn/self-dunking-ai/domain"
+	"github.com/Kocannn/self-dunking-ai/pkg/ollama"
 	"github.com/Kocannn/self-dunking-ai/utils"
 	"github.com/sirupsen/logrus"
 )
@@ -161,6 +162,109 @@ func (h *handler) SubmitIdea(w http.ResponseWriter, r *http.Request) {
 		Message: "Idea submitted successfully",
 		Data:    assistantResponse,
 	}, w)
+}
+
+// Streaming versions of handlers
+func (h *handler) StreamSubmitIdea(w http.ResponseWriter, r *http.Request) {
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		logrus.Errorf("error reading request body: %v", err)
+		http.Error(w, "Error reading request body", http.StatusBadRequest)
+		return
+	}
+
+	dataBuffer := domain.Idea{}
+	if err := json.Unmarshal(bodyBytes, &dataBuffer); err != nil {
+		logrus.Errorf("error unmarshalling request body: %v", err)
+		http.Error(w, "Error parsing request body", http.StatusBadRequest)
+		return
+	}
+
+	promptSystem := &domain.Message{
+		Role:    "system",
+		Content: domain.PROMPT_CRITIC,
+	}
+
+	promptUser := &domain.Message{
+		Role:    "user",
+		Content: dataBuffer.Text,
+	}
+
+	messages := []*domain.Message{promptSystem, promptUser}
+
+	// Use streaming response
+	if err := ollama.StreamPrompt(w, messages); err != nil {
+		logrus.Errorf("error streaming idea: %v", err)
+		return
+	}
+}
+
+func (h *handler) StreamDefendIdea(w http.ResponseWriter, r *http.Request) {
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		logrus.Errorf("error reading request body: %v", err)
+		http.Error(w, "Error reading request body", http.StatusBadRequest)
+		return
+	}
+
+	dataBuffer := domain.Idea{}
+	if err := json.Unmarshal(bodyBytes, &dataBuffer); err != nil {
+		logrus.Errorf("error unmarshalling request body: %v", err)
+		http.Error(w, "Error parsing request body", http.StatusBadRequest)
+		return
+	}
+
+	promptSystem := &domain.Message{
+		Role:    "system",
+		Content: domain.PROMPT_DEFEND,
+	}
+
+	promptUser := &domain.Message{
+		Role:    "user",
+		Content: dataBuffer.Critique,
+	}
+
+	messages := []*domain.Message{promptSystem, promptUser}
+
+	// Use streaming response
+	if err := ollama.StreamPrompt(w, messages); err != nil {
+		logrus.Errorf("error streaming idea: %v", err)
+		return
+	}
+}
+
+func (h *handler) StreamImproveIdea(w http.ResponseWriter, r *http.Request) {
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		logrus.Errorf("error reading request body: %v", err)
+		http.Error(w, "Error reading request body", http.StatusBadRequest)
+		return
+	}
+
+	dataBuffer := domain.Idea{}
+	if err := json.Unmarshal(bodyBytes, &dataBuffer); err != nil {
+		logrus.Errorf("error unmarshalling request body: %v", err)
+		http.Error(w, "Error parsing request body", http.StatusBadRequest)
+		return
+	}
+
+	promptSystem := &domain.Message{
+		Role:    "system",
+		Content: domain.PROMPT_IMPROVE,
+	}
+
+	promptUser := &domain.Message{
+		Role:    "user",
+		Content: dataBuffer.Critique,
+	}
+
+	messages := []*domain.Message{promptSystem, promptUser}
+
+	// Use streaming response
+	if err := ollama.StreamPrompt(w, messages); err != nil {
+		logrus.Errorf("error streaming idea: %v", err)
+		return
+	}
 }
 
 var (

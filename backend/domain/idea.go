@@ -19,6 +19,9 @@ type Idea struct {
 
 type IdeaHandler interface {
 	SubmitIdea(w http.ResponseWriter, r *http.Request)
+	StreamSubmitIdea(w http.ResponseWriter, r *http.Request)
+	StreamDefendIdea(w http.ResponseWriter, r *http.Request)
+	StreamImproveIdea(w http.ResponseWriter, r *http.Request)
 	DefendIdea(w http.ResponseWriter, r *http.Request)
 	ImproveIdea(w http.ResponseWriter, r *http.Request)
 }

@@ -1,6 +1,7 @@
 package ollama
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -86,4 +87,78 @@ func PostPrompt(messages []*domain.Message) (*domain.Ollama, error) {
 	}
 
 	return ollamaResponse, nil
+}
+
+// New streaming function
+func StreamPrompt(w http.ResponseWriter, messages []*domain.Message) error {
+	cfg := config.GetConfig()
+
+	requestBody := domain.OllamaRequest{
+		Model:    cfg.OLLAMA_MODEL,
+		Messages: messages,
+	}
+
+	jsonData, err := json.Marshal(requestBody)
+	if err != nil {
+		logrus.Errorf("Error marshaling request: %v", err)
+		return err
+	}
+
+	// Set up SSE headers
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	// Create HTTP request to Ollama with stream flag
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/chat", cfg.OLLAMA_HOST), bytes.NewBuffer(jsonData))
+	if err != nil {
+		logrus.Errorf("Error creating request: %v", err)
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// Execute request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		logrus.Errorf("Error sending request to Ollama: %v", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Create a scanner to read line by line from response
+	scanner := bufio.NewScanner(resp.Body)
+
+	// Stream each chunk as it arrives
+	for scanner.Scan() {
+		line := scanner.Text()
+		if len(line) == 0 {
+			continue
+		}
+
+		var streamResp domain.OllamaStreamResponse
+		if err := json.Unmarshal([]byte(line), &streamResp); err != nil {
+			logrus.Warnf("Error unmarshaling part of response: %v", err)
+			continue
+		}
+
+		// Extract content from the response
+		content := ""
+		if streamResp.Content != "" {
+			content = streamResp.Content
+		} else if streamResp.Message.Content != "" {
+			content = streamResp.Message.Content
+		}
+
+		// Send each chunk to client
+		fmt.Fprintf(w, "data: %s\n\n", content)
+		w.(http.Flusher).Flush() // Flush to ensure data is sent immediately
+	}
+
+	// Send end-of-stream signal
+	fmt.Fprintf(w, "data: [DONE]\n\n")
+	w.(http.Flusher).Flush()
+
+	return nil
 }
