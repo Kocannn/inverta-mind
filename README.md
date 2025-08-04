@@ -33,8 +33,8 @@ The goal isn't to destroy your enthusiasm, but to strengthen your ideas by ident
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/self-debunking-ai.git
-   cd self-debunking-ai
+   git clone https://github.com/Kocannn/inverta-mind.git
+   cd inverta-mind
    ```
 
 2. Set up environment variables:
@@ -45,7 +45,7 @@ The goal isn't to destroy your enthusiasm, but to strengthen your ideas by ident
 
 3. Start the application:
    ```
-   docker-compose up -d
+   docker-compose up --build -d
    ```
 
 4. Access the application at http://localhost:3000
