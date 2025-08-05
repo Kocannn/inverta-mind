@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/Kocannn/self-dunking-ai/domain"
 	"github.com/Kocannn/self-dunking-ai/pkg/ollama"
@@ -16,6 +17,60 @@ type (
 		usecase domain.IdeaUsecase
 	}
 )
+
+// SubmitIdeaStream implements domain.IdeaHandler.
+func (h *handler) SubmitIdeaStream(w http.ResponseWriter, r *http.Request) {
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		logrus.Errorf("error reading request body: %v", err)
+		utils.Response(domain.HttpResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Error reading request body",
+		}, w)
+		return
+	}
+
+	dataBuffer := domain.SubmitIdeaRequest{}
+
+	if err := json.Unmarshal(bodyBytes, &dataBuffer); err != nil {
+		logrus.Errorf("error unmarshalling request body: %v", err)
+		utils.Response(domain.HttpResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Error parsing request body",
+			Data:    nil,
+		}, w)
+		return
+	}
+
+	// Log para depuración
+	logrus.Infof("Received idea submission: %s", dataBuffer.Idea)
+
+	// Crear la solicitud de idea
+	now := time.Now()
+	submitRequest := domain.SubmitIdeaRequest{
+		Idea:      dataBuffer.Idea,
+		CreatedAt: &now,
+	}
+
+	// Guardar la idea y obtener el resultado
+	createdIdea, err := h.usecase.SubmitIdeaStream(r.Context(), submitRequest)
+	if err != nil {
+		logrus.Errorf("error saving idea stream: %v", err)
+		utils.Response(domain.HttpResponse{
+			Code:    http.StatusInternalServerError,
+			Message: "Error saving idea",
+			Data:    nil,
+		}, w)
+		return
+	}
+
+	// Responder al cliente con la idea creada
+	utils.Response(domain.HttpResponse{
+		Code:    http.StatusOK,
+		Message: "Idea submitted successfully",
+		Data:    createdIdea,
+	}, w)
+}
 
 // DefendIdea implements domain.IdeaHandler.
 func (h *handler) DefendIdea(w http.ResponseWriter, r *http.Request) {

@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"net/http"
+	"time"
 )
 
 type Idea struct {
@@ -17,6 +18,12 @@ type Idea struct {
 	CreatedAt        string `json:"created_at"`        //tanggal pembuatan
 }
 
+type SubmitIdeaRequest struct {
+	Id        int        `json:"id" gorm:"primary_key auto_increment"`
+	Idea      string     `json:"idea"`
+	CreatedAt *time.Time `json:"created_at" gorm:"not null" default:"CURRENT_TIMESTAMP"`
+}
+
 type IdeaHandler interface {
 	SubmitIdea(w http.ResponseWriter, r *http.Request)
 	StreamSubmitIdea(w http.ResponseWriter, r *http.Request)
@@ -24,14 +31,17 @@ type IdeaHandler interface {
 	StreamImproveIdea(w http.ResponseWriter, r *http.Request)
 	DefendIdea(w http.ResponseWriter, r *http.Request)
 	ImproveIdea(w http.ResponseWriter, r *http.Request)
+	SubmitIdeaStream(w http.ResponseWriter, r *http.Request)
 }
 
 type IdeaUsecase interface {
 	SubmitIdea(ctx context.Context, idea string) ([]*Message, error)
 	DefendIdea(ctx context.Context, critique string) ([]*Message, error)
 	ImproveIdea(ctx context.Context, critique string) ([]*Message, error)
+	SubmitIdeaStream(ctx context.Context, idea SubmitIdeaRequest) (SubmitIdeaRequest, error)
 }
 
 type IdeaRepository interface {
 	SubmitIdea(ctx context.Context, idea string) error
+	SubmitIdeaStream(ctx context.Context, idea SubmitIdeaRequest) (SubmitIdeaRequest, error)
 }

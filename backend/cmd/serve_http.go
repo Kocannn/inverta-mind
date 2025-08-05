@@ -129,5 +129,7 @@ func registerHandler(app app.App) *mux.Router {
 	// v1.HandleFunc("/stream/defend-idea", app.IdeaHandler.StreamDefendIdea).Methods(http.MethodPost)
 	// v1.HandleFunc("/stream/improve-idea", app.IdeaHandler.StreamImproveIdea).Methods(http.MethodPost)
 
+	v1.HandleFunc("/submit-idea-stream", app.IdeaHandler.SubmitIdeaStream).Methods(http.MethodPost)
+
 	return router
 }

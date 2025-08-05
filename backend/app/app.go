@@ -23,6 +23,8 @@ func InitApp(cfg config.Config) App {
 			DSN: cfg.DB_POSTGRES_DSN,
 		}})
 
+	db.AutoMigrate(&domain.SubmitIdeaRequest{})
+
 	jwtInstance := jwt.NewJwt(cfg.JWT_SECRET_KEY)
 
 	middleware := middleware.InitMiddleware(jwtInstance)

@@ -17,6 +17,16 @@ type (
 	}
 )
 
+// SubmitIdeaStream implements domain.IdeaUsecase.
+func (u *usecase) SubmitIdeaStream(ctx context.Context, idea domain.SubmitIdeaRequest) (domain.SubmitIdeaRequest, error) {
+	createdIdea, err := u.repo.SubmitIdeaStream(ctx, idea)
+	if err != nil {
+		logrus.Errorf("error submitting idea stream: %v", err)
+		return domain.SubmitIdeaRequest{}, err
+	}
+	return createdIdea, nil
+}
+
 // DefendIdea implements domain.IdeaUsecase.
 
 func (u *usecase) DefendIdea(ctx context.Context, critique string) ([]*domain.Message, error) {
