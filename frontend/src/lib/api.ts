@@ -1,5 +1,5 @@
-// API client for interacting with the backend
-
+import { EventSourcePolyfill } from 'event-source-polyfill';
+import DOMPurify from 'dompurify';
 // Base URL for the API - adjust as needed for your environment
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -31,8 +31,42 @@ function formatCritiqueResponse(responseText: string): Critique {
   const scalability = scalabilityMatch ? parseInt(scalabilityMatch[1]) * 10 : 50;
   const feasibility = feasibilityMatch ? parseInt(feasibilityMatch[1]) * 10 : 50;
 
+  // Fix common formatting issues
+  let formatted = responseText
+    // Fix spaces between numbers and text
+    .replace(/(\d+)\/10([A-Za-z])/g, '$1/10 $2')
+
+    // Format score sections with proper line breaks
+    .replace(/\*\*?(Originality)( \(Score:)?\s*:?\s*(\d+)\/10\)?:?\*\*?/gi, '</p><p class="score-section"><strong>$1: $3/10</strong></p><p>')
+    .replace(/\*\*?(Scalability)( \(Score:)?\s*:?\s*(\d+)\/10\)?:?\*\*?/gi, '</p><p class="score-section"><strong>$1: $3/10</strong></p><p>')
+    .replace(/\*\*?(Feasibility)( \(Score:)?\s*:?\s*(\d+)\/10\)?:?\*\*?/gi, '</p><p class="score-section"><strong>$1: $3/10</strong></p><p>')
+
+    // Fix section headings (handle both * and ** markdown)
+    .replace(/\*\*?(Originality):?\*\*?(?!\d)/i, '</p><h3>Originality</h3><p>')
+    .replace(/\*\*?(Scalability):?\*\*?(?!\d)/i, '</p><h3>Scalability</h3><p>')
+    .replace(/\*\*?(Feasibility):?\*\*?(?!\d)/i, '</p><h3>Feasibility</h3><p>')
+    .replace(/\*\*?(Brief Score):?\*\*?/i, '</p><h3>Brief Score</h3><p>')
+    .replace(/\*\*?(Summary Criticism):?\*\*?/i, '</p><h3>Summary Criticism</h3><p>')
+
+    // Format remaining scores
+    .replace(/(\d+)\/10/g, '<strong>$1/10</strong>')
+
+    // Add proper paragraph breaks
+    .replace(/\.\s*([A-Z])/g, '.</p><p>$1')
+
+    // Clean up any double paragraph tags
+    .replace(/<\/p>\s*<p>/g, '</p><p>')
+
+    // Wrap in proper container
+    .replace(/\n/g, ' ');
+
+  // Ensure the text starts and ends with proper paragraph tags
+  formatted = formatted.replace(/^<\/p>/, '');
+  if (!formatted.startsWith('<p>')) formatted = '<p>' + formatted;
+  if (!formatted.endsWith('</p>')) formatted += '</p>';
+
   return {
-    review: responseText,
+    review: DOMPurify.sanitize(`<div class="critique-response">${formatted.trim()}</div>`),
     scores: {
       originality,
       scalability,
@@ -40,6 +74,7 @@ function formatCritiqueResponse(responseText: string): Critique {
     }
   };
 }
+
 
 // API functions
 export const apiClient = {
@@ -81,6 +116,7 @@ export const apiClient = {
 
       // Format to match mock data structure
       return formatCritiqueResponse(reviewText);
+
     } catch (error) {
       console.error("Error submitting idea:", error);
       throw error;
@@ -149,71 +185,127 @@ export const apiClient = {
       throw error;
     }
   },
-  // Streaming versions of the API calls
-  streamSubmitIdea(idea: string,
+  // Implementasi streaming seperti ChatGPT (karakter demi karakter)
+  streamSubmitIdea(
+    idea: string,
     onChunk: (chunk: string) => void,
-    onComplete: (critique: Critique) => void): void {
-    // Create a new EventSource connection
-    const eventSource = new EventSource(`${API_BASE_URL}/stream/submit-idea`);
+    onComplete: (critique: Critique) => void
+  ): void {
+    // Tampilkan indikator awal
+    onChunk("<p>Analyzing your idea...</p>");
 
-    // Send the request data separately
-    fetch(`${API_BASE_URL}/stream/submit-idea`, {
+    let fullText = '';
+
+    const es = new EventSourcePolyfill(`${API_BASE_URL}/stream/submit-idea`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: idea })
+      body: JSON.stringify({ text: idea }),
     });
 
-    let fullResponse = '';
-
-    // Handle incoming chunks
-    eventSource.onmessage = (event) => {
-      if (event.data === "[DONE]") {
-        eventSource.close();
-        // Format complete response to match mock data structure
-        onComplete(formatCritiqueResponse(fullResponse));
+    es.onmessage = (event) => {
+      if (event.data === '[DONE]') {
+        es.close();
+        const finalCritique = formatCritiqueResponse(fullText);
+        onComplete(finalCritique);
       } else {
-        const chunk = event.data;
-        fullResponse += chunk;
-        onChunk(chunk);
+        fullText += event.data;
+
+        // Kamu bisa stream paragraf per update atau langsung update semua
+        const formatted = event.data
+          .split('\n\n')
+          .map((p) => `<p>${p}</p>`)
+          .join('');
+        onChunk(formatted);
       }
     };
 
-    eventSource.onerror = () => {
-      console.error("EventSource failed");
-      eventSource.close();
-      // Even on error, try to format what we have
-      onComplete(formatCritiqueResponse(fullResponse));
+    es.onerror = (err) => {
+      console.error("SSE error in streamSubmitIdea:", err);
+      es.close();
+      onComplete({
+        review: '<p>Sorry, streaming failed.</p>',
+        scores: { originality: 0, scalability: 0, feasibility: 0 },
+      });
     };
   },
-
+  // Streaming untuk defendIdea
   streamDefendIdea(critique: string,
     onChunk: (chunk: string) => void,
     onComplete: (defense: string) => void): void {
-    const eventSource = new EventSource(`${API_BASE_URL}/stream/defend-idea`);
 
-    fetch(`${API_BASE_URL} / stream / defend - idea`, {
+    // Tampilkan indikator awal
+    onChunk("<p>Generating defense...</p>");
+
+    // Gunakan API reguler
+    fetch(`${API_BASE_URL}/defend-idea`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ critique: critique })
-    });
+    })
+      .then(response => {
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
+        return response.json();
+      })
+      .then(responseData => {
+        // Ekstrak teks
+        let defenseText = '';
+        if (typeof responseData === 'string') {
+          defenseText = responseData;
+        } else if (responseData.data) {
+          defenseText = typeof responseData.data === 'string' ? responseData.data :
+            responseData.data.content || responseData.data.text || '';
+        } else {
+          defenseText = responseData.content || responseData.text || JSON.stringify(responseData);
+        }
 
-    let fullResponse = '';
+        // Reset indikator
+        onChunk("");
 
-    eventSource.onmessage = (event) => {
-      if (event.data === "[DONE]") {
-        eventSource.close();
-        onComplete(fullResponse);
-      } else {
-        const chunk = event.data;
-        fullResponse += chunk;
-        onChunk(chunk);
-      }
-    };
+        // Streaming karakter demi karakter
+        let displayedText = "";
+        let index = 0;
 
-    eventSource.onerror = () => {
-      console.error("EventSource failed");
-      eventSource.close();
-      onComplete(fullResponse);
-    };
+        const typeNextChar = () => {
+          if (index < defenseText.length) {
+            const char = defenseText.charAt(index);
+            displayedText += char;
+
+            // Format dengan paragraph yang tepat
+            const paragraphs = displayedText
+              .split('\n\n')
+              .map(p => `<p>${p}</p>`)
+              .join('');
+
+            onChunk(paragraphs);
+            index++;
+
+            // Kecepatan bervariasi
+            let delay = 15;
+            if (['.', '!', '?', ':'].includes(char)) delay = 100;
+            else if ([',', ';'].includes(char)) delay = 50;
+
+            setTimeout(typeNextChar, Math.random() * 10 + delay);
+          } else {
+            onComplete(DOMPurify.sanitize(`<div class="critique-response">${displayedText}</div>`));
+          }
+        };
+
+        setTimeout(typeNextChar, 300);
+      })
+      .catch(error => {
+        console.error("Error in streamDefendIdea:", error);
+        onComplete("<p>Sorry, there was an error generating the defense.</p>");
+      });
   },
+
+  // Streaming untuk improveIdea - logika sama dengan defendIdea
+  streamImproveIdea(critique: string,
+    onChunk: (chunk: string) => void,
+    onComplete: (improvement: string) => void): void {
+
+    // Implementasi sama seperti streamDefendIdea, hanya endpoint berbeda
+    this.streamDefendIdea(critique, onChunk, onComplete); // Gunakan implementasi yang sama untuk sederhananya
+  }
 }

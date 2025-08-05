@@ -18,9 +18,11 @@ interface AppState {
   isImproving: boolean
   setIdea: (idea: string) => void
   submitIdea: () => Promise<void>
+  submitStreamIdea: () => Promise<void>
   defendIdea: () => Promise<void>
   improveIdea: () => Promise<void>
   reset: () => void
+  streamingContent: string
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -29,6 +31,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isLoading: false,
   isDefending: false,
   isImproving: false,
+  streamingContent: "",
 
   setIdea: (idea) => set({ idea }),
 
@@ -48,9 +51,37 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ isLoading: false });
     }
   },
+  submitStreamIdea: async () => {
+    const { idea } = get();
+    if (!idea.trim()) return;
+
+    set({ isLoading: true, streamingContent: "" });
+    try {
+      apiClient.streamSubmitIdea(
+        idea,
+        // Update UI langsung untuk setiap chunk
+        (chunk) => {
+          // Set langsung konten streaming tanpa menggabungkan
+          // ini memastikan formatnya tepat dari API
+          set({ streamingContent: chunk });
+        },
+        // Setelah selesai, simpan hasil lengkap
+        (critique) => {
+          set({
+            critique,
+            isLoading: false,
+            streamingContent: ""
+          });
+        }
+      );
+    } catch (error) {
+      console.error("Error streaming idea submission:", error);
+      set({ isLoading: false, streamingContent: "" });
+    }
+  },
 
   defendIdea: async () => {
-    const { idea, critique } = get();
+    const { critique } = get();
     if (!critique) return;
 
     set({ isDefending: true });
@@ -74,7 +105,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
 
   improveIdea: async () => {
-    const { idea, critique } = get();
+    const { critique } = get();
     if (!critique) return;
 
     set({ isImproving: true });
@@ -96,6 +127,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
+
   reset: () =>
     set({
       idea: "",
@@ -105,6 +137,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       isImproving: false,
     }),
 }));
+
+
+
+
+
 
 // Helper function to extract scores from the critique text
 function extractScore(text: string, category: string): number | null {

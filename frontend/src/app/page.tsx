@@ -10,12 +10,14 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { useAppStore } from "@/lib/store"
 
 export default function HomePage() {
-  const { idea, critique, isLoading, isDefending, isImproving, setIdea, submitIdea, defendIdea, improveIdea, reset } =
-    useAppStore()
+  const {
+    idea, critique, isLoading, isDefending, isImproving, streamingContent,
+    setIdea, submitStreamIdea, defendIdea, improveIdea, reset
+  } = useAppStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await submitIdea()
+    await submitStreamIdea()
   }
 
   return (
@@ -110,8 +112,19 @@ export default function HomePage() {
                 <CardTitle className="text-xl font-bold text-gray-900 dark:text-white">AI Critique</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Critique Content with Streaming Support */}
                 <div className="prose prose-gray dark:prose-invert max-w-none">
-                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{critique.review}</p>
+                  {isLoading ? (
+                    /* Saat loading, tampilkan konten streaming */
+                    <div className="streaming-content">
+                      <div dangerouslySetInnerHTML={{
+                        __html: streamingContent || "<p>Analyzing your idea...</p>"
+                      }} />
+                    </div>
+                  ) : (
+                    /* Setelah loading selesai, tampilkan hasil akhir */
+                    <div dangerouslySetInnerHTML={{ __html: critique.review }} />
+                  )}
                 </div>
 
                 {/* Scores */}

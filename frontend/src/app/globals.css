@@ -2,6 +2,31 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.critique-response .score-section {
+  margin: 12px 0;
+  padding: 8px 0;
+  border-top: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  font-weight: 500;
+}
+
+.streaming-content p:last-child::after {
+  content: "▋";
+  display: inline-block;
+  margin-left: 2px;
+  animation: cursor-blink 1s step-end infinite;
+}
+
+@keyframes cursor-blink {
+  from,
+  to {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
