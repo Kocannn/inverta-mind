@@ -1,5 +1,4 @@
 services:
-
   postgres:
     image: postgres:15
     container_name: postgres
@@ -12,6 +11,8 @@ services:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d self-debunking-ai"]
 
   backend:
     build:
@@ -22,10 +23,12 @@ services:
     volumes:
       - ./backend:/app
     depends_on:
-      - ollama
-      - postgres
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
     env_file:
-      - ./backend/.env  
+      - ./backend/.env
 
 
   frontend: 
