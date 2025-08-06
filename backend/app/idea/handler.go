@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/Kocannn/self-dunking-ai/domain"
 	"github.com/Kocannn/self-dunking-ai/pkg/ollama"
 	"github.com/Kocannn/self-dunking-ai/utils"
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
@@ -18,8 +20,34 @@ type (
 	}
 )
 
+// GetIdeas implements domain.IdeaHandler.
+func (h *handler) GetIdea(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		logrus.Errorf("error converting id to int: %v", err)
+		utils.Response(domain.HttpResponse{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid ID format",
+			Data:    nil,
+		}, w)
+		return
+	}
+
+	data, err := h.usecase.GetIdea(r.Context(), idInt)
+
+	utils.Response(domain.HttpResponse{
+		Code:    http.StatusOK,
+		Message: "Idea retrieved successfully",
+		Data:    data,
+	}, w)
+
+}
+
 // SubmitIdeaStream implements domain.IdeaHandler.
 func (h *handler) SubmitIdeaStream(w http.ResponseWriter, r *http.Request) {
+
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
 		logrus.Errorf("error reading request body: %v", err)
@@ -42,17 +70,14 @@ func (h *handler) SubmitIdeaStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Log para depuración
 	logrus.Infof("Received idea submission: %s", dataBuffer.Idea)
 
-	// Crear la solicitud de idea
 	now := time.Now()
 	submitRequest := domain.SubmitIdeaRequest{
 		Idea:      dataBuffer.Idea,
 		CreatedAt: &now,
 	}
 
-	// Guardar la idea y obtener el resultado
 	createdIdea, err := h.usecase.SubmitIdeaStream(r.Context(), submitRequest)
 	if err != nil {
 		logrus.Errorf("error saving idea stream: %v", err)
@@ -64,7 +89,6 @@ func (h *handler) SubmitIdeaStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Responder al cliente con la idea creada
 	utils.Response(domain.HttpResponse{
 		Code:    http.StatusOK,
 		Message: "Idea submitted successfully",
@@ -72,7 +96,6 @@ func (h *handler) SubmitIdeaStream(w http.ResponseWriter, r *http.Request) {
 	}, w)
 }
 
-// DefendIdea implements domain.IdeaHandler.
 func (h *handler) DefendIdea(w http.ResponseWriter, r *http.Request) {
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -221,17 +244,30 @@ func (h *handler) SubmitIdea(w http.ResponseWriter, r *http.Request) {
 
 // Streaming versions of handlers
 func (h *handler) StreamSubmitIdea(w http.ResponseWriter, r *http.Request) {
-	bodyBytes, err := io.ReadAll(r.Body)
-	if err != nil {
-		logrus.Errorf("error reading request body: %v", err)
-		http.Error(w, "Error reading request body", http.StatusBadRequest)
+	// Set proper CORS headers for SSE
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	// Handle OPTIONS preflight
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	dataBuffer := domain.Idea{}
-	if err := json.Unmarshal(bodyBytes, &dataBuffer); err != nil {
-		logrus.Errorf("error unmarshalling request body: %v", err)
-		http.Error(w, "Error parsing request body", http.StatusBadRequest)
+	vars := mux.Vars(r)
+	id := vars["id"]
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		logrus.Errorf("error parsing ID: %v", err)
+		http.Error(w, "Invalid ID format", http.StatusBadRequest)
+		return
+	}
+
+	idea, err := h.usecase.GetIdea(r.Context(), idInt)
+	if err != nil {
+		logrus.Errorf("error getting idea: %v", err)
+		http.Error(w, "Error retrieving idea", http.StatusInternalServerError)
 		return
 	}
 
@@ -242,7 +278,7 @@ func (h *handler) StreamSubmitIdea(w http.ResponseWriter, r *http.Request) {
 
 	promptUser := &domain.Message{
 		Role:    "user",
-		Content: dataBuffer.Text,
+		Content: idea.Idea,
 	}
 
 	messages := []*domain.Message{promptSystem, promptUser}

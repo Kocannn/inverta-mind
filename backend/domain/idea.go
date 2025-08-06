@@ -7,8 +7,8 @@ import (
 )
 
 type Idea struct {
-	Id               string `json:"id"`
-	UserId           string `json:"user_id"`
+	Id               int    `json:"id"`
+	UserId           int    `json:"user_id"`
 	Text             string `json:"text"`
 	Critique         string `json:"critique"`          // Add this field for the critique
 	Feedback         string `json:"feedback"`          // feedback dari reviewer
@@ -26,6 +26,7 @@ type SubmitIdeaRequest struct {
 
 type IdeaHandler interface {
 	SubmitIdea(w http.ResponseWriter, r *http.Request)
+	GetIdea(w http.ResponseWriter, r *http.Request)
 	StreamSubmitIdea(w http.ResponseWriter, r *http.Request)
 	StreamDefendIdea(w http.ResponseWriter, r *http.Request)
 	StreamImproveIdea(w http.ResponseWriter, r *http.Request)
@@ -35,6 +36,7 @@ type IdeaHandler interface {
 }
 
 type IdeaUsecase interface {
+	GetIdea(ctx context.Context, id int) (SubmitIdeaRequest, error)
 	SubmitIdea(ctx context.Context, idea string) ([]*Message, error)
 	DefendIdea(ctx context.Context, critique string) ([]*Message, error)
 	ImproveIdea(ctx context.Context, critique string) ([]*Message, error)
@@ -42,6 +44,7 @@ type IdeaUsecase interface {
 }
 
 type IdeaRepository interface {
+	GetIdea(ctx context.Context, id int) (SubmitIdeaRequest, error)
 	SubmitIdea(ctx context.Context, idea string) error
 	SubmitIdeaStream(ctx context.Context, idea SubmitIdeaRequest) (SubmitIdeaRequest, error)
 }

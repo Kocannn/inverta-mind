@@ -12,12 +12,12 @@ import { useAppStore } from "@/lib/store"
 export default function HomePage() {
   const {
     idea, critique, isLoading, isDefending, isImproving, streamingContent,
-    setIdea, submitStreamIdea, defendIdea, improveIdea, reset
+    setIdea, submitStreamIdea, defendIdea, improveIdea, reset, postIdea
   } = useAppStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await submitStreamIdea()
+    await postIdea()
   }
 
   return (
@@ -115,11 +115,12 @@ export default function HomePage() {
                 {/* Critique Content with Streaming Support */}
                 <div className="prose prose-gray dark:prose-invert max-w-none">
                   {isLoading ? (
-                    /* Saat loading, tampilkan konten streaming */
+                    /* Saat loading, tampilkan konten streaming dengan efek pengetikan */
                     <div className="streaming-content">
                       <div dangerouslySetInnerHTML={{
                         __html: streamingContent || "<p>Analyzing your idea...</p>"
                       }} />
+                      {streamingContent && <span className="typing-cursor">▋</span>}
                     </div>
                   ) : (
                     /* Setelah loading selesai, tampilkan hasil akhir */

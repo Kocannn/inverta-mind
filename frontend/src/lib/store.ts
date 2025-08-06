@@ -19,6 +19,7 @@ interface AppState {
   setIdea: (idea: string) => void
   submitIdea: () => Promise<void>
   submitStreamIdea: () => Promise<void>
+  postIdea: () => Promise<void>
   defendIdea: () => Promise<void>
   improveIdea: () => Promise<void>
   reset: () => void
@@ -51,6 +52,58 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ isLoading: false });
     }
   },
+
+
+  postIdea: async () => {
+    const { idea } = get();
+    if (!idea.trim()) return;
+
+    set({ isLoading: true, streamingContent: "" });
+    try {
+      // First post the idea to get an ID
+      const response = await apiClient.PostIdea(idea);
+      console.log("Idea posted successfully:", response);
+
+      // Now start streaming with the received ID
+      if (response && response.data && response.data.id) {
+        console.log("Starting stream with ID:", response.data.id);
+
+        apiClient.streamSubmitIdea(
+          // Update UI langsung untuk setiap chunk
+          (chunk) => {
+            // Tambahkan efek mengetik dengan mengganti seluruh konten
+            set({ streamingContent: chunk });
+
+            // Auto-scroll ke bagian bawah jika di mobile/viewport sempit
+            if (window.innerWidth < 768) {
+              setTimeout(() => {
+                window.scrollTo({
+                  top: document.body.scrollHeight,
+                  behavior: 'smooth'
+                });
+              }, 100);
+            }
+          },
+          // Setelah selesai, simpan hasil lengkap
+          (critique) => {
+            set({
+              critique,
+              isLoading: false,
+              streamingContent: ""
+            });
+          },
+          response.data.id
+        );
+      } else {
+        console.error("Missing ID in response:", response);
+        set({ isLoading: false });
+      }
+    } catch (error) {
+      console.error("Error posting idea:", error);
+      set({ isLoading: false, streamingContent: "" });
+    }
+  },
+
   submitStreamIdea: async () => {
     const { idea } = get();
     if (!idea.trim()) return;

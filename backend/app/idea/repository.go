@@ -14,6 +14,16 @@ type (
 	}
 )
 
+// GetIdea implements domain.IdeaRepository.
+func (r *repository) GetIdea(ctx context.Context, id int) (domain.SubmitIdeaRequest, error) {
+	data := domain.SubmitIdeaRequest{}
+	err := r.db.DB(ctx).First(&data, id).Error
+	if err != nil {
+		return domain.SubmitIdeaRequest{}, err
+	}
+	return data, nil
+}
+
 // SubmitIdeaStream implements domain.IdeaRepository.
 func (r *repository) SubmitIdeaStream(ctx context.Context, idea domain.SubmitIdeaRequest) (domain.SubmitIdeaRequest, error) {
 	err := r.db.DB(ctx).Create(&idea).Error

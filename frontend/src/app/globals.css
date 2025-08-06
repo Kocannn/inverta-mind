@@ -17,6 +17,21 @@
   animation: cursor-blink 1s step-end infinite;
 }
 
+/* Styling untuk efek typing */
+.typing-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 20px;
+  background-color: currentColor;
+  margin-left: 2px;
+  animation: blink 1s step-start infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
 @keyframes cursor-blink {
   from,
   to {

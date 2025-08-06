@@ -17,6 +17,16 @@ type (
 	}
 )
 
+// GetIdea implements domain.IdeaUsecase.
+func (u *usecase) GetIdea(ctx context.Context, id int) (domain.SubmitIdeaRequest, error) {
+	data, err := u.repo.GetIdea(ctx, id)
+	if err != nil {
+		logrus.Errorf("error getting idea: %v", err)
+		return domain.SubmitIdeaRequest{}, err
+	}
+	return data, nil
+}
+
 // SubmitIdeaStream implements domain.IdeaUsecase.
 func (u *usecase) SubmitIdeaStream(ctx context.Context, idea domain.SubmitIdeaRequest) (domain.SubmitIdeaRequest, error) {
 	createdIdea, err := u.repo.SubmitIdeaStream(ctx, idea)

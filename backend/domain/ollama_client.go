@@ -10,6 +10,7 @@ type Message struct {
 type OllamaRequest struct {
 	Model    string     `json:"model"`
 	Messages []*Message `json:"messages"`
+	Stream   bool       `json:"stream,omitempty"` // For streaming responses
 }
 
 // For streaming responses

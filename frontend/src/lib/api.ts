@@ -13,6 +13,13 @@ interface Critique {
   };
 }
 
+interface ResponseData {
+  id: number;
+  idea: string;
+  created_at: string;
+
+}
+
 interface ApiResponse<T> {
   code: number;
   message: string;
@@ -185,39 +192,68 @@ export const apiClient = {
       throw error;
     }
   },
-  // Implementasi streaming seperti ChatGPT (karakter demi karakter)
+
+  async PostIdea(idea: string): Promise<ApiResponse<ResponseData>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/submit-idea-stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ idea: idea }), // Menggunakan format yang benar sesuai backend
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const responseData: ApiResponse<ResponseData> = await response.json();
+      console.log("Full response data:", responseData); // Logging untuk debug
+      return responseData;
+    } catch (error) {
+      console.error("Error posting idea:", error);
+      throw error;
+    }
+  },
+
   streamSubmitIdea(
-    idea: string,
     onChunk: (chunk: string) => void,
-    onComplete: (critique: Critique) => void
+    onComplete: (critique: Critique) => void,
+    id: number
   ): void {
     // Tampilkan indikator awal
     onChunk("<p>Analyzing your idea...</p>");
 
     let fullText = '';
 
-    const es = new EventSourcePolyfill(`${API_BASE_URL}/stream/submit-idea`, {
+    const es = new EventSourcePolyfill(`${API_BASE_URL}/stream/submit-idea/${id}`, {
       headers: {
         'Content-Type': 'application/json',
       },
-      method: 'POST',
-      body: JSON.stringify({ text: idea }),
+      withCredentials: false, // Important for CORS
     });
 
-    es.onmessage = (event) => {
-      if (event.data === '[DONE]') {
-        es.close();
-        const finalCritique = formatCritiqueResponse(fullText);
-        onComplete(finalCritique);
-      } else {
-        fullText += event.data;
+    es.onopen = () => {
+      console.log("SSE connection opened for streaming");
+    };
 
-        // Kamu bisa stream paragraf per update atau langsung update semua
-        const formatted = event.data
-          .split('\n\n')
-          .map((p) => `<p>${p}</p>`)
-          .join('');
-        onChunk(formatted);
+    es.onmessage = (event) => {
+      try {
+        console.log("Received chunk:", event.data);
+
+        if (event.data === '[DONE]') {
+          es.close();
+          const finalCritique = formatCritiqueResponse(fullText);
+          onComplete(finalCritique);
+        } else {
+          fullText += event.data;
+
+          // Format streaming content for display
+          const formatted = formatStreamingContent(fullText);
+          onChunk(formatted);
+        }
+      } catch (error) {
+        console.error("Error processing stream chunk:", error);
       }
     };
 
@@ -225,87 +261,25 @@ export const apiClient = {
       console.error("SSE error in streamSubmitIdea:", err);
       es.close();
       onComplete({
-        review: '<p>Sorry, streaming failed.</p>',
+        review: '<p>Sorry, streaming failed. Please try again.</p>',
         scores: { originality: 0, scalability: 0, feasibility: 0 },
       });
     };
   },
-  // Streaming untuk defendIdea
-  streamDefendIdea(critique: string,
-    onChunk: (chunk: string) => void,
-    onComplete: (defense: string) => void): void {
 
-    // Tampilkan indikator awal
-    onChunk("<p>Generating defense...</p>");
-
-    // Gunakan API reguler
-    fetch(`${API_BASE_URL}/defend-idea`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ critique: critique })
-    })
-      .then(response => {
-        if (!response.ok) throw new Error(`API error: ${response.status}`);
-        return response.json();
-      })
-      .then(responseData => {
-        // Ekstrak teks
-        let defenseText = '';
-        if (typeof responseData === 'string') {
-          defenseText = responseData;
-        } else if (responseData.data) {
-          defenseText = typeof responseData.data === 'string' ? responseData.data :
-            responseData.data.content || responseData.data.text || '';
-        } else {
-          defenseText = responseData.content || responseData.text || JSON.stringify(responseData);
-        }
-
-        // Reset indikator
-        onChunk("");
-
-        // Streaming karakter demi karakter
-        let displayedText = "";
-        let index = 0;
-
-        const typeNextChar = () => {
-          if (index < defenseText.length) {
-            const char = defenseText.charAt(index);
-            displayedText += char;
-
-            // Format dengan paragraph yang tepat
-            const paragraphs = displayedText
-              .split('\n\n')
-              .map(p => `<p>${p}</p>`)
-              .join('');
-
-            onChunk(paragraphs);
-            index++;
-
-            // Kecepatan bervariasi
-            let delay = 15;
-            if (['.', '!', '?', ':'].includes(char)) delay = 100;
-            else if ([',', ';'].includes(char)) delay = 50;
-
-            setTimeout(typeNextChar, Math.random() * 10 + delay);
-          } else {
-            onComplete(DOMPurify.sanitize(`<div class="critique-response">${displayedText}</div>`));
-          }
-        };
-
-        setTimeout(typeNextChar, 300);
-      })
-      .catch(error => {
-        console.error("Error in streamDefendIdea:", error);
-        onComplete("<p>Sorry, there was an error generating the defense.</p>");
-      });
-  },
-
-  // Streaming untuk improveIdea - logika sama dengan defendIdea
-  streamImproveIdea(critique: string,
-    onChunk: (chunk: string) => void,
-    onComplete: (improvement: string) => void): void {
-
-    // Implementasi sama seperti streamDefendIdea, hanya endpoint berbeda
-    this.streamDefendIdea(critique, onChunk, onComplete); // Gunakan implementasi yang sama untuk sederhananya
-  }
 }
+// Helper function to format streaming content with proper HTML
+function formatStreamingContent(text) {
+  // Format text untuk streaming yang lebih baik
+  return text
+    // Format paragraf dengan benar
+    .split('\n\n')
+    .map(p => p.trim())
+    .filter(p => p)
+    .map(p => {
+      // Cek jika paragraf sudah memiliki tag HTML
+      return p.startsWith('<') ? p : `<p>${p}</p>`;
+    })
+    .join('');
+}
+// Streaming untuk defendIdea

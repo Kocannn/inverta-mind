@@ -45,9 +45,10 @@ var serveHttpCmd = &cobra.Command{
 		// build cors
 		muxCorsWithRouter := cors.New(cors.Options{
 			AllowedOrigins:   cfg.CORS_ALLOWED_ORIGINS,
-			AllowedHeaders:   cfg.CORS_ALLOWED_HEADERS,
-			AllowedMethods:   cfg.CORS_ALLOWED_METHODS,
+			AllowedHeaders:   append(cfg.CORS_ALLOWED_HEADERS, "Authorization", "Cache-Control", "X-Requested-With"),
+			AllowedMethods:   append(cfg.CORS_ALLOWED_METHODS, "OPTIONS"),
 			AllowCredentials: true,
+			ExposedHeaders:   []string{"Content-Type", "Content-Length", "Cache-Control"},
 		}).Handler(router)
 
 		srv := &http.Server{
@@ -124,7 +125,10 @@ func registerHandler(app app.App) *mux.Router {
 	v1.HandleFunc("/defend-idea", app.IdeaHandler.DefendIdea).Methods(http.MethodPost)
 	v1.HandleFunc("/improve-idea", app.IdeaHandler.ImproveIdea).Methods(http.MethodPost)
 
+	v1.HandleFunc("/get-idea/{id}", app.IdeaHandler.GetIdea).Methods(http.MethodGet)
+
 	// Streaming endpoints
+	v1.HandleFunc("/stream/submit-idea/{id}", app.IdeaHandler.StreamSubmitIdea).Methods(http.MethodGet)
 	v1.HandleFunc("/stream/submit-idea", app.IdeaHandler.StreamSubmitIdea).Methods(http.MethodPost)
 	// v1.HandleFunc("/stream/defend-idea", app.IdeaHandler.StreamDefendIdea).Methods(http.MethodPost)
 	// v1.HandleFunc("/stream/improve-idea", app.IdeaHandler.StreamImproveIdea).Methods(http.MethodPost)
