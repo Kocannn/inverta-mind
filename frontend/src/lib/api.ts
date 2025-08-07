@@ -237,7 +237,7 @@ export const apiClient = {
       console.log("SSE connection opened for streaming");
     };
 
-    es.onmessage = (event) => {
+    es.onmessage = (event: any) => {
       try {
         console.log("Received chunk:", event.data);
 
@@ -257,7 +257,7 @@ export const apiClient = {
       }
     };
 
-    es.onerror = (err) => {
+    es.onerror = (err: any) => {
       console.error("SSE error in streamSubmitIdea:", err);
       es.close();
       onComplete({
@@ -269,7 +269,7 @@ export const apiClient = {
 
 }
 // Helper function to format streaming content with proper HTML
-function formatStreamingContent(text) {
+function formatStreamingContent(text: string) {
   // Format text untuk streaming yang lebih baik
   return text
     // Format paragraf dengan benar

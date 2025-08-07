@@ -31,7 +31,7 @@ export default function HomePage() {
                 <Brain className="h-6 w-6 text-red-600 dark:text-red-400" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">Self-Debunking AI</h1>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">Inverta Mind</h1>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Brutal honesty for better ideas</p>
               </div>
             </div>

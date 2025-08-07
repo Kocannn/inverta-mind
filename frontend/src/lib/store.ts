@@ -69,12 +69,11 @@ export const useAppStore = create<AppState>((set, get) => ({
         console.log("Starting stream with ID:", response.data.id);
 
         apiClient.streamSubmitIdea(
-          // Update UI langsung untuk setiap chunk
           (chunk) => {
-            // Tambahkan efek mengetik dengan mengganti seluruh konten
-            set({ streamingContent: chunk });
+            set((state) => ({
+              streamingContent: state.streamingContent + chunk
+            }));
 
-            // Auto-scroll ke bagian bawah jika di mobile/viewport sempit
             if (window.innerWidth < 768) {
               setTimeout(() => {
                 window.scrollTo({
@@ -84,7 +83,6 @@ export const useAppStore = create<AppState>((set, get) => ({
               }, 100);
             }
           },
-          // Setelah selesai, simpan hasil lengkap
           (critique) => {
             set({
               critique,
@@ -114,12 +112,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         idea,
         // Update UI langsung untuk setiap chunk
         (chunk) => {
-          // Set langsung konten streaming tanpa menggabungkan
-          // ini memastikan formatnya tepat dari API
-          set({ streamingContent: chunk });
+          set((state) => ({
+            streamingContent: state.streamingContent + chunk
+          }));
         },
         // Setelah selesai, simpan hasil lengkap
-        (critique) => {
+        (critique: any) => {
           set({
             critique,
             isLoading: false,
